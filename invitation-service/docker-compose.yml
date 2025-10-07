@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # =======================
+  # MySQL for Invitation Service
+  # =======================
+  invitation-db:
+    image: mysql:8.0
+    container_name: invitation-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: invitationdb
+    ports:
+      - "3307:3306"
+    volumes:
+      - invitation-data:/var/lib/mysql
+    networks:
+      - invitation-network
+
+  # =======================
+  # Invitation Service
+  # =======================
+  invitation-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: invitation-service
+    restart: always
+    depends_on:
+      - invitation-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://invitation-db:3306/invitationdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8082:8082"
+    networks:
+      - invitation-network
+
+# =======================
+# Named volumes and network
+# =======================
+volumes:
+  invitation-data:
+
+networks:
+  invitation-network:
+    driver: bridge
