@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  # 🟦 MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: user-service-digitopia
+    restart: always
+    environment:
+      MYSQL_DATABASE: userdb
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: user
+      MYSQL_PASSWORD: root
+    ports:
+      - "3306:3306"   # Host:Container
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - user-network
+
+  # 🟩 User Service (Spring Boot App)
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: user-service
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/userdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - user-network
+
+
+# 🗂️ Volumes
+volumes:
+  mysql_data:
+
+# 🌐 Networks
+networks:
+  user-network:
+    driver: bridge
