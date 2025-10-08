@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+    # =======================
+    # MySQL for Organization Service
+    # =======================
+  organization-db:
+    image: mysql:8.0
+    container_name: organization-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: organizationdb
+    ports:
+      - "3308:3306"
+    volumes:
+      - organization-data:/var/lib/mysql
+    networks:
+      - organization-network
+
+  # =======================
+  # Organization Service
+  # =======================
+  organization-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: organization-service
+    restart: always
+    depends_on:
+      - organization-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://organization-db:3308/organizationdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    ports:
+      - "8084:8084"
+    networks:
+        - organization-network
+
+# =======================
+# Named volumes and network
+# =======================
+volumes:
+  organization-data:
+
+networks:
+  organization-network:
+    driver: bridge
