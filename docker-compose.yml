@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - microservice-network
+
+  mysql-user:
+    image: mysql:8.0
+    container_name: mysql-user
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: userdb
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_user_data:/var/lib/mysql
+    networks:
+      - microservice-network
+
+  mysql-invitation:
+    image: mysql:8.0
+    container_name: mysql-invitation
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: invitationdb
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_invitation_data:/var/lib/mysql
+    networks:
+      - microservice-network
+
+  mysql-organization:
+    image: mysql:8.0
+    container_name: mysql-organization
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: organizationdb
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_organization_data:/var/lib/mysql
+    networks:
+      - microservice-network
+
+volumes:
+  rabbitmq_data:
+  mysql_invitation_data:
+  mysql_user_data:
+  mysql_organization_data:
+
+networks:
+  microservice-network:
+    driver: bridge
