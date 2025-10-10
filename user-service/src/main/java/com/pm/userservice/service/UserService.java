@@ -9,5 +9,4 @@ public interface UserService {
     UserDto getUserByEmail(String email);
     List<UserDto> searchUsersByNormalizedName(String normalizedName);
     List<String> getUserOrganizations(Long userId);
-    void addOrganizationsToUser(Long userId, List<Long> organizationIds);
 }
