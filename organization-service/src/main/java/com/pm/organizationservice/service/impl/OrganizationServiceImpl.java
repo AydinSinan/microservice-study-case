@@ -2,67 +2,90 @@ package com.pm.organizationservice.service.impl;
 
 import com.pm.organizationservice.dto.OrganizationDto;
 import com.pm.organizationservice.entity.Organization;
+import com.pm.organizationservice.event.OrganizationEventPublisher;
 import com.pm.organizationservice.exception.DuplicateRegistryNumberException;
 import com.pm.organizationservice.exception.OrganizationNotFoundException;
+import com.pm.organizationservice.mapper.OrganizationMapper;
 import com.pm.organizationservice.repository.OrganizationRepository;
 import com.pm.organizationservice.service.OrganizationService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.stream.Collectors;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
+
 public class OrganizationServiceImpl implements OrganizationService {
 
     private final OrganizationRepository repository;
+    private final OrganizationMapper mapper;
+    private final OrganizationEventPublisher eventPublisher;
 
 
     @Override
-    public OrganizationDto createOrganization(OrganizationDto dto) {
-        repository.findByRegistryNumber(dto.getRegistryNumber()).ifPresent(org -> {
-            throw new DuplicateRegistryNumberException("Organization with registry number " + dto.getRegistryNumber() + " already exists.");
-        });
+    @Transactional
+    public OrganizationDto createOrganization(OrganizationDto dto, String createdBy) {
+        repository.findByRegistryNumber(dto.getRegistryNumber())
+                .ifPresent(o -> {
+                    throw new DuplicateRegistryNumberException("Registry number already in use: " + dto.getRegistryNumber());
+                });
 
-        Organization org =Organization.builder()
-                .organizationName(dto.getOrganizationName())
-                .normalizedOrganizationName(dto.getOrganizationName().toLowerCase().replaceAll("[^a-z0-9]", ""))
-                .registryNumber(dto.getRegistryNumber())
-                .email(dto.getEmail())
-                .companySize(dto.getCompanySize())
-                .yearFounded(dto.getYearFounded())
-                .build();
+        Organization organization = mapper.toEntity(dto);
 
-        Organization savedOrg = repository.save(org);
-        return mapToDto(savedOrg);
+        if (organization.getEmail() == null) {
+            log.warn("⚠️ email is null — organization will not be linked to a specific user");
+        }
+
+        // 3️⃣ Save to DB
+        organization = repository.save(organization);
+        log.info("✅ Organization '{}' saved successfully", organization.getOrganizationName());
+
+        // 4️⃣ Aynı email’e ait organization'ları bul
+        List<String> organizationNames = repository.findAllByEmail(organization.getEmail())
+                .stream()
+                .map(Organization::getOrganizationName)
+                .toList();
+
+        // 5️⃣ Event publish (user-service'e)
+        eventPublisher.publishUserOrganizationsUpdatedEvent(
+                organization.getEmail(),
+                organizationNames
+        );
+
+        log.info("📤 Published UserOrganizationsUpdatedEvent for email={}, organizations={}",
+                organization.getEmail(), organizationNames);
+
+        // 6️⃣ DTO döndür
+        return mapper.toDto(organization);
     }
 
     @Override
     public OrganizationDto getByRegistryNumber(String registryNumber) {
-        Organization org = repository.findByRegistryNumber(registryNumber)
-                .orElseThrow(() -> new OrganizationNotFoundException("Organization with registry number " + registryNumber + " not found."));
-        return mapToDto(org);
+        return repository.findByRegistryNumber(registryNumber)
+                .map(mapper::toDto)
+                .orElseThrow(() -> new OrganizationNotFoundException("Organization not found"));
     }
 
     @Override
-    public OrganizationDto searchByNormalizedName(String name) {
-        return (OrganizationDto) repository.findByNormalizedOrganizationName(name).stream().map(this::mapToDto).collect(Collectors.toList());
-    }
-
-    @Override
-    public OrganizationDto searchByYearAndSize(Integer year, Integer size) {
-        return (OrganizationDto) repository.findByYearFoundedAndCompanySize(year, size).stream().map(this::mapToDto).collect(Collectors.toList());
-    }
-
-    private OrganizationDto mapToDto(Organization org) {
-        return OrganizationDto.builder()
-                .id(org.getId())
-                .organizationName(org.getOrganizationName())
-                .normalizedOrganizationName(org.getNormalizedOrganizationName())
-                .registryNumber(org.getRegistryNumber())
-                .email(org.getEmail())
-                .companySize(org.getCompanySize())
-                .yearFounded(org.getYearFounded())
-                .build();
+    public Page<OrganizationDto> search(String normalizedName, Integer yearFounded, String companySize, Pageable pageable) {
+        if (normalizedName != null) {
+            return repository.findByNormalizedOrganizationNameContainingIgnoreCase(normalizedName, pageable)
+                    .map(mapper::toDto);
+        } else if (yearFounded != null) {
+            return repository.findByYearFounded(yearFounded, pageable)
+                    .map(mapper::toDto);
+        } else if (companySize != null) {
+            return repository.findByCompanySizeContainingIgnoreCase(companySize, pageable)
+                    .map(mapper::toDto);
+        } else {
+            return repository.findAll(pageable)
+                    .map(mapper::toDto);
+        }
     }
 }
