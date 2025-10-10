@@ -16,6 +16,12 @@ spring:
         format_sql: true
   application:
     name: organization-service
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin
+    virtual-host: /
 
 management:
   endpoints:
@@ -33,3 +39,16 @@ management:
       enabled: true
     defaults:
       enabled: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    org.springframework.amqp: INFO
+    com.pm.organizationservice: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.engine.jdbc.spi.SqlExceptionHelper: WARN
+    org.hibernate.resource.transaction: WARN
+    org.hibernate.internal.AbstractSharedSessionContract: WARN
