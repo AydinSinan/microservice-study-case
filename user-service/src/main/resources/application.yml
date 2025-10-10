@@ -17,6 +17,11 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQL8Dialect
 
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin
 management:
   endpoints:
     web:
@@ -35,11 +40,18 @@ management:
     defaults:
       enabled: true
 
-logging:
-  level:
-    root: INFO
-    org.springframework.web: DEBUG
-    org.hibernate: DEBUG
+  logging:
+    level:
+      root: INFO
+      org.springframework.web: INFO
+      org.springframework.amqp: INFO
+      org.hibernate.SQL: DEBUG
+      org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+      org.hibernate.orm.jdbc.bind: TRACE
+      org.hibernate.engine.jdbc.spi.SqlExceptionHelper: WARN
+      org.hibernate.resource.transaction: WARN
+      org.hibernate.internal.AbstractSharedSessionContract: WARN
+
 
 springdoc:
   api-docs:
